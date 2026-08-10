@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+# Imported packs live outside the package so they survive updates and can be
+# written by the Settings app, which runs as mobile.
+PACKS=/var/mobile/Library/FlexClock/Packs
+mkdir -p "$PACKS"
+chown -R mobile:mobile /var/mobile/Library/FlexClock
+
+exit 0

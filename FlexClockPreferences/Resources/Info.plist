@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.tr3tol.flexclock.prefs</string>
+	<key>CFBundleName</key>
+	<string>FlexClockPreferences</string>
+	<key>CFBundleExecutable</key>
+	<string>FlexClockPreferences</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<!-- Built at runtime in PrefsBundle.c via objc_allocateClassPair. -->
+	<key>NSPrincipalClass</key>
+	<string>FlexClockRootListController</string>
+</dict>
+</plist>
