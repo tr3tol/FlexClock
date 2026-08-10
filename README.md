@@ -35,7 +35,7 @@ https://tr3tol.github.io/repo/
 Or install a release `.deb` by hand:
 
 ```sh
-dpkg -i com.tr3tol.flexclock_1.0.0_iphoneos-arm64.deb
+dpkg -i com.tr3tol.flexclock_1.0.1_iphoneos-arm64.deb
 killall -9 SpringBoard
 ```
 
