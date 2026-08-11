@@ -50,10 +50,16 @@
 			<key>validValues</key>
 			<array>
 				<string>Anime.flexpack</string>
+				<string>Pixel.flexpack</string>
+				<string>CRT.flexpack</string>
+				<string>Sakura.flexpack</string>
 			</array>
 			<key>validTitles</key>
 			<array>
 				<string>Anime</string>
+				<string>Pixel</string>
+				<string>CRT</string>
+				<string>Sakura</string>
 			</array>
 		</dict>
 		<dict>
@@ -101,6 +107,31 @@
 			<string>staticInLowPower</string>
 			<key>default</key>
 			<false/>
+			<key>defaults</key>
+			<string>com.tr3tol.flexclock</string>
+			<key>PostNotification</key>
+			<string>com.tr3tol.flexclock/preferenceschanged</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>ANIMATION SPEED</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>animationSpeed</string>
+			<key>default</key>
+			<real>1</real>
+			<key>min</key>
+			<real>0.25</real>
+			<key>max</key>
+			<real>3</real>
+			<key>showValue</key>
+			<true/>
 			<key>defaults</key>
 			<string>com.tr3tol.flexclock</string>
 			<key>PostNotification</key>

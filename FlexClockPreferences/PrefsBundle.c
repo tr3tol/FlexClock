@@ -298,22 +298,36 @@ static void FCPopPastPackList(id self) {
 #pragma mark - Root page
 
 // Keeps the inline pack picker in Root.plist in sync with what is installed.
+// The plist already lists the bundled packs, and the scan only adds to it:
+// replacing the list outright means anything that stops the directory being
+// read leaves the picker holding fewer packs than are actually installed.
 static void FCFillPackPicker(id specifiers) {
-	id packs = FCAllPacks();
-	if (FCCount(packs) == 0) return;
-
-	id values = FCArray();
-	id titles = FCArray();
-	for (long i = 0; i < FCCount(packs); i++) {
-		id pack = FCAt(packs, i);
-		FCSend1(values, "addObject:", FCSend1(pack, "objectForKey:", FCStr("id")));
-		FCSend1(titles, "addObject:", FCSend1(pack, "objectForKey:", FCStr("title")));
-	}
-
 	for (long i = 0; i < FCCount(specifiers); i++) {
 		id specifier = FCAt(specifiers, i);
-		id key = FCSend1(specifier, "propertyForKey:", FCStr("key"));
-		if (!FCIsEqual(key, FCStr("pack"))) continue;
+		if (!FCIsEqual(FCSend1(specifier, "propertyForKey:", FCStr("key")), FCStr("pack")))
+			continue;
+
+		id values = FCSend1(specifier, "propertyForKey:", FCStr("validValues"));
+		id titles = FCSend1(specifier, "propertyForKey:", FCStr("validTitles"));
+		values = values ? FCSend1((id)objc_getClass("NSMutableArray"), "arrayWithArray:", values)
+		                : FCArray();
+		titles = titles ? FCSend1((id)objc_getClass("NSMutableArray"), "arrayWithArray:", titles)
+		                : FCArray();
+
+		id packs = FCAllPacks();
+		for (long j = 0; j < FCCount(packs); j++) {
+			id pack = FCAt(packs, j);
+			id name = FCSend1(pack, "objectForKey:", FCStr("id"));
+
+			BOOL known = NO;
+			for (long n = 0; n < FCCount(values); n++) {
+				if (FCIsEqual(FCAt(values, n), name)) { known = YES; break; }
+			}
+			if (known) continue;
+
+			FCSend1(values, "addObject:", name);
+			FCSend1(titles, "addObject:", FCSend1(pack, "objectForKey:", FCStr("title")));
+		}
 
 		FCSetSpecifierProperty(specifier, values, "validValues");
 		FCSetSpecifierProperty(specifier, titles, "validTitles");

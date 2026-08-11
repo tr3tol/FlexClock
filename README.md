@@ -8,7 +8,8 @@ Built against the `CoverSheetKit` lock screen, for iOS 18.
 
 ## Features
 
-- Animated (GIF) or static digits
+- Animated (GIF or APNG) or static digits
+- Adjustable animation speed
 - Installable digit packs, imported and removed from Settings
 - Optional switch to still frames while Low Power Mode is on
 - Adjustable digit size, spacing and vertical offset
@@ -43,7 +44,10 @@ Settings live under **Settings → FlexClock**.
 
 ## Digit packs
 
-Packs are plain folders. The bundled ones ship with the package:
+Four packs ship with the tweak — **Anime**, **Pixel**, **CRT** and **Sakura** —
+and Anime is the default.
+
+Packs are plain folders. The bundled ones live here:
 
 ```
 /var/jb/Library/Application Support/FlexClock/Packs/
@@ -74,8 +78,11 @@ MyPack.flexpack/
 
 - At least one of `animated/` or `static/` must exist. If the folder for the
   selected animation style is missing, the other one is used.
-- `.gif` and `.png` are both accepted in either folder. Animated GIFs play at
-  their own frame timing.
+- `.gif` and `.png` are both accepted in either folder, and animated GIF and
+  APNG both play at their own frame timing. APNG is worth the larger files when
+  the artwork has soft edges: GIF carries a single bit of alpha, which turns a
+  glow into a ragged halo. A glyph is looked up as `.gif` first, so a pack
+  ships one format or the other, not both.
 - Digits are laid out by their aspect ratio, so frames do not have to be square
   or share a common width.
 - `Info.plist` is optional; without it the folder name is used as the title.

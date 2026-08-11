@@ -47,6 +47,7 @@ typedef struct {
 	CGFloat scale;          // digit height, 1.0 == height of the system clock
 	CGFloat spacing;        // gap between digits in points, may be negative
 	CGFloat verticalOffset; // shifts the whole row, negative moves it up
+	CGFloat animationSpeed; // divides the pack's own loop length
 } FCSettings;
 
 static FCSettings gS;
@@ -150,7 +151,10 @@ static NSCache *FCCache(void) {
 	static NSCache *cache = nil;
 	if (!cache) {
 		cache = [[NSCache alloc] init];
-		cache.totalCostLimit = 12 * 1024 * 1024;
+		// Sized so a whole pack stays resident. The heaviest bundled pack costs
+		// around 31 MB across its eleven glyphs, and a limit below that evicts
+		// a digit only to decode it again when the minute rolls over.
+		cache.totalCostLimit = 36 * 1024 * 1024;
 	}
 	return cache;
 }
@@ -194,17 +198,29 @@ static UIImage *FCDecodeImage(NSString *path) {
 
 		NSDictionary *props = (__bridge_transfer NSDictionary *)
 			CGImageSourceCopyPropertiesAtIndex(src, i, NULL);
+
 		NSDictionary *gif = props[(__bridge NSString *)kCGImagePropertyGIFDictionary];
 		NSNumber *delay = gif[(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime];
 		if (!delay) delay = gif[(__bridge NSString *)kCGImagePropertyGIFDelayTime];
+
+		// APNG keeps its timing in the PNG dictionary. Without this a pack that
+		// needs real alpha -- which GIF cannot carry -- is stuck at the 0.1s
+		// fallback, so it can never run faster than ten frames a second.
+		if (!delay) {
+			NSDictionary *png = props[(__bridge NSString *)kCGImagePropertyPNGDictionary];
+			delay = png[(__bridge NSString *)kCGImagePropertyAPNGUnclampedDelayTime];
+			if (!delay) delay = png[(__bridge NSString *)kCGImagePropertyAPNGDelayTime];
+		}
 		total += delay ? [delay doubleValue] : 0.1;
 	}
 	CFRelease(src);
 
 	if (frames.count == 0) return nil;
 	if (frames.count == 1) return frames[0];
-	return [UIImage animatedImageWithImages:frames
-	                               duration:(total > 0 ? total : frames.count * 0.1)];
+
+	if (total <= 0) total = frames.count * 0.1;
+	if (gS.animationSpeed > 0) total /= gS.animationSpeed;
+	return [UIImage animatedImageWithImages:frames duration:total];
 }
 
 // Recolours a frame the way iOS tints app icons: hue and saturation come from
@@ -311,6 +327,10 @@ static void FCLoadSettings(void) {
 
 	gS.spacing = FCPrefFloat("digitSpacing", -2.0);
 	gS.verticalOffset = FCPrefFloat("verticalOffset", 0.0);
+
+	gS.animationSpeed = FCPrefFloat("animationSpeed", 1.0);
+	if (gS.animationSpeed < 0.25) gS.animationSpeed = 0.25;
+	if (gS.animationSpeed > 4.0) gS.animationSpeed = 4.0;
 
 	NSString *format = FCPrefStr("timeFormat", "system");
 	gS.format = [format isEqualToString:S("12hour")] ? 1
