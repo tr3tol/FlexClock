@@ -22,6 +22,7 @@
 
 #import <UIKit/UIKit.h>
 #import <ImageIO/ImageIO.h>
+#import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #import "PrivateHeaders.h"
 
@@ -387,6 +388,68 @@ static void *kOverlay = &kOverlay;
 static void *kLastMinute = &kLastMinute;
 static void *kLastSize = &kLastSize;
 static void *kLastGeneration = &kLastGeneration;
+static void *kGlyphImage = &kGlyphImage;
+
+#define kFramesKey "flexclock.frames"
+
+// Animated glyphs are not handed to UIImageView as animated images: it starts
+// such an image from its first frame whenever it is assigned, so the one digit
+// that changed at the minute rollover ran out of step with the rest. The frames
+// are played by a layer animation anchored to one shared epoch instead, which
+// makes a glyph's phase depend only on the current time, not on when it was set.
+static CFTimeInterval FCAnimationEpoch(void) {
+	static CFTimeInterval epoch = 0;
+	if (epoch == 0) epoch = CACurrentMediaTime();
+	return epoch;
+}
+
+static void FCClearGlyph(UIImageView *view) {
+	[view.layer removeAnimationForKey:S(kFramesKey)];
+	view.image = nil; // an unused view must not keep decoded frames alive
+	objc_setAssociatedObject(view, kGlyphImage, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static void FCSetGlyph(UIImageView *view, UIImage *image) {
+	NSString *key = S(kFramesKey);
+	NSArray *frames = image.images;
+	CALayer *layer = view.layer;
+
+	if (objc_getAssociatedObject(view, kGlyphImage) == image &&
+	    (frames.count == 0 || [layer animationForKey:key])) {
+		return;
+	}
+	objc_setAssociatedObject(view, kGlyphImage, image, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	[layer removeAnimationForKey:key];
+
+	if (frames.count == 0 || image.duration <= 0) {
+		view.image = image;
+		return;
+	}
+	view.image = frames[0];
+
+	// Discrete mode wants one more key time than there are values: each frame
+	// holds from its own key time until the next one.
+	NSMutableArray *values = [NSMutableArray arrayWithCapacity:frames.count];
+	NSMutableArray *keyTimes = [NSMutableArray arrayWithCapacity:frames.count + 1];
+	for (NSUInteger i = 0; i < frames.count; i++) {
+		UIImage *frame = frames[i];
+		[values addObject:(__bridge id)frame.CGImage];
+		[keyTimes addObject:[NSNumber numberWithDouble:(double)i / frames.count]];
+	}
+	[keyTimes addObject:[NSNumber numberWithDouble:1.0]];
+
+	CAKeyframeAnimation *anim = [CAKeyframeAnimation animationWithKeyPath:S("contents")];
+	anim.values = values;
+	anim.keyTimes = keyTimes;
+	anim.calculationMode = kCAAnimationDiscrete;
+	anim.duration = image.duration;
+	anim.repeatCount = HUGE_VALF;
+	anim.removedOnCompletion = NO;
+	// A begin time in the past starts the loop part way through, exactly where
+	// a glyph added at the epoch would be now.
+	anim.beginTime = [layer convertTime:FCAnimationEpoch() fromLayer:nil];
+	[layer addAnimation:anim forKey:key];
+}
 
 // Polled rather than observed: an NSNotificationCenter observer needs either a
 // block or a custom class, and neither is available in this build. This runs
@@ -477,7 +540,7 @@ static void FCRender(UIView *overlay, NSDate *date) {
 	for (NSUInteger i = images.count; i < pool.count; i++) {
 		UIImageView *view = pool[i];
 		view.hidden = YES;
-		view.image = nil; // an unused view must not keep an animation alive
+		FCClearGlyph(view);
 	}
 
 	CGFloat x = (size.width - totalWidth) / 2.0;
@@ -486,7 +549,7 @@ static void FCRender(UIView *overlay, NSDate *date) {
 		UIImageView *view = pool[i];
 		CGFloat width = [widths[i] doubleValue];
 		view.hidden = NO;
-		if (view.image != images[i]) view.image = images[i];
+		FCSetGlyph(view, images[i]);
 		view.frame = CGRectMake(x, y, width, digitHeight);
 		x += width + gS.spacing;
 	}
@@ -518,7 +581,7 @@ static void FCRender(UIView *overlay, NSDate *date) {
 			overlay.hidden = YES;
 			// Drop the images so hidden views stop holding decoded frames.
 			for (UIView *sub in overlay.subviews) {
-				if ([sub isKindOfClass:[UIImageView class]]) ((UIImageView *)sub).image = nil;
+				if ([sub isKindOfClass:[UIImageView class]]) FCClearGlyph((UIImageView *)sub);
 			}
 			objc_setAssociatedObject(overlay, kLastMinute, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 		}

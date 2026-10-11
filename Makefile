@@ -9,7 +9,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = FlexClock
 FlexClock_FILES = Tweak.xm
 FlexClock_CFLAGS = -fobjc-arc -Wno-deprecated-declarations
-FlexClock_FRAMEWORKS = UIKit CoreGraphics ImageIO
+FlexClock_FRAMEWORKS = UIKit CoreGraphics ImageIO QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
