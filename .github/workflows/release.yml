@@ -1,0 +1,71 @@
+# Builds the rootless .deb with Theos and attaches it to a GitHub Release.
+#
+# A tag such as v1.0.3 produces the release; the tag has to match the Version
+# field in `control`, otherwise the build stops before packaging. Running the
+# workflow by hand only uploads the .deb as a workflow artifact.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      THEOS: ${{ github.workspace }}/.theos-toolchain
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check that the tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(sed -n 's/^Version: //p' control)"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "control says $version but the tag is $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Install build tools
+        run: brew install make ldid dpkg xz
+
+      - name: Install Theos
+        run: |
+          git clone --quiet --recursive --depth=1 --shallow-submodules \
+            https://github.com/theos/theos.git "$THEOS"
+
+      # The sdks repository holds every SDK ever published, so only the one
+      # the Makefile targets is checked out.
+      - name: Install iOS SDK
+        run: |
+          git clone --quiet --depth=1 --filter=blob:none --sparse \
+            https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set iPhoneOS16.5.sdk
+          mkdir -p "$THEOS/sdks"
+          mv "$RUNNER_TEMP/sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/"
+
+      - name: Build package
+        run: |
+          # Theos needs GNU make 4; the one that ships with Xcode is 3.81.
+          export PATH="$(brew --prefix make)/libexec/gnubin:$PATH"
+          make clean package FINALPACKAGE=1
+          ls -l packages
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlexClock
+          path: packages/*.deb
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: FlexClock ${{ github.ref_name }}
+          files: packages/*.deb
+          generate_release_notes: true
