@@ -1,13 +1,14 @@
-# Builds the rootless .deb with Theos and attaches it to a GitHub Release.
-#
-# A tag such as v1.0.3 produces the release; the tag has to match the Version
-# field in `control`, otherwise the build stops before packaging. Running the
-# workflow by hand only uploads the .deb as a workflow artifact.
-name: Release
+# Builds the rootless .deb with Theos. Every push and pull request uploads it
+# as a workflow artifact; a tag such as v1.0.3 also attaches it to a GitHub
+# Release. The tag has to match the Version field in `control`, otherwise the
+# build stops before packaging.
+name: Build
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
 permissions:
